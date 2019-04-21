@@ -12,7 +12,8 @@ from flask import Flask, jsonify
 #################################################
 # Database Setup
 #################################################
-engine = create_engine("sqlite:///Resources/hawaii.sqlite")
+engine = create_engine("sqlite:///Resources/hawaii.sqlite",
+        connect_args={'check_same_thread':False})
 
 # reflect an existing database into a new model
 Base = automap_base()
@@ -91,24 +92,51 @@ def temperature():
     return jsonify(temp_dict)
 
 # Return a JSON list of the minimum temperature, the average temperature, 
-# and the max temperature for a given start or start-end range
+# and the max temperature for a given start
 # When given the start only, calculate TMIN, TAVG, and TMAX 
 # for all dates greater than and equal to the start date
+@app.route("/api/v1.0/<start>")
+def startDate(start):
+    # Query minimum, average and maximum temperatures
+    # for all dates greater than the given date
+    results = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start).all()
+
+    # Create a dictionary from the row data and append to a list
+    startDate_temps=[]
+    for result in results:
+        startDate_dict = {}
+        startDate_dict['Start Date'] = start
+        startDate_dict['Minimum Temperature'] = result[0]
+        startDate_dict['Average Temperature'] = result[1]
+        startDate_dict['Maximum Temperature'] = result[2]
+        startDate_temps.append(startDate_dict)
+
+    return jsonify(startDate_temps)
+
+# Return a JSON list of the minimum temperature, the average temperature, 
+# and the max temperature for a given start-end range
 # When given the start and the end date, calculate the TMIN, 
 # TAVG, and TMAX for dates between the start and end date inclusive
-@app.route("/api/v1.0/<start>")
-def temperature():
+@app.route("/api/v1.0/<start>/<end>")
+def start_End_Date(start, end):
+    # Query minimum, average and maximum temperatures
+    # for all dates greater than the given date
+    results = session.query(func.min(Measurement.tobs),func.avg(Measurement.tobs),func.max(Measurement.tobs)).\
+    filter(Measurement.date >= start).filter(Measurement.date <= end).all()
 
-    query_date_temps = dt.date(2017, 8, 23) - dt.timedelta(days=365)
+    # Create a dictionary from the row data and append to a list
+    start_End_temps=[]
+    for result in results:
+        start_End_dict = {}
+        start_End_dict['Start Date'] = start
+        start_End_dict['End Date'] = end
+        start_End_dict['Minimum Temperature'] = result[0]
+        start_End_dict['Average Temperature'] = result[1]
+        start_End_dict['Maximum Temperature'] = result[2]
+        start_End_temps.append(start_End_dict)
 
-    data_precipitation_temps = session.query(Measurement.date, Measurement.tobs).\
-    filter(Measurement.date >= query_date_temps).order_by(Measurement.date).all()
-
-    temp_dict = {date:tobs for date, tobs in data_precipitation_temps}
-    
-    return jsonify(temp_dict)
-
-
+    return jsonify(start_End_temps)
 
 if __name__ == '__main__':
     app.run(debug=True)
